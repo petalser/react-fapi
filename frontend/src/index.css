@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -12,4 +14,14 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* body {
+  background-color: #333;
+  min-height: 100dvh;
+  min-width: 100dvw;
+} */
+
+@theme inline {
+  --breakpoint-big: 769px;
 }
