@@ -30,14 +30,17 @@ services:
       context: ./frontend
     container_name: react_app
     ports:
-      - "3000:3000"  # Exposes the frontend on port 3000
+      - "3000:3000"
     volumes:
-      - ./frontend:/app  # Mount the source code into the container for live reloading
+      - ./frontend:/app
+      - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:8000  # Point to FastAPI
-    command: npm run dev  # Runs Vite's dev server in the container
+      - VITE_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true 
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
-      - web  # Ensures the frontend starts after the backend is ready
+      - web
 
 volumes:
   postgres_data:
