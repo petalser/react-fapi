@@ -1,17 +1,42 @@
-import Home from "./components/Home"
-import Lobby from "./components/Lobby"
-import Register from "./components/Register"
+// import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContextProvider";
+import { useAuth } from "./hooks/useAuth";
+import Home from "./components/Home";
+import Lobby from "./components/Lobby";
+import Register from "./components/Register";
 
-export default function App() {
-
+function AppRoutes() {
+  const { token } = useAuth();
 
   return (
-    <div className="flex flex-row w-screen h-screen big:px-40 big:py-7">
-      {/* <Home /> */}
-      {/* <Lobby /> */}
-      <Register />
-    </div>
-  )
+    <Routes>
+      <Route
+        path="/"
+        element={token ? <Home /> : <Navigate to="/login" replace />}
+      />
+
+      <Route
+        path="/login"
+        element={token ? <Navigate to="/" replace /> : <Lobby />}
+      />
+
+      <Route
+        path="/register"
+        element={token ? <Navigate to="/" replace /> : <Register />}
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
