@@ -1,4 +1,3 @@
-// import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContextProvider";
 import { useAuth } from "./hooks/useAuth";
