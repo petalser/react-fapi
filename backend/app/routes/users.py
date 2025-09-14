@@ -1,7 +1,7 @@
 import os
 import hashlib
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from typing import List
+from fastapi import APIRouter, HTTPException, Query
 from fastapi_sqlalchemy import db
 from app.schemas import UserRead, UserCreate
 
@@ -9,12 +9,14 @@ from app.models import User
 
 router = APIRouter()
 
-@router.get("/users/{user_id}", response_model=UserRead)
-def read_user(user_id: int):
-    user = db.session.query(User).filter(User.id == user_id).first()
-    if not user:
+@router.get("/users", response_model=List[UserRead])
+def read_user(username: str = Query(..., description="Search users by username")):
+    users = db.session.query(User).filter(User.user_name.ilike(f"%{username}%")).all()
+    
+    if not users:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    
+    return users
 
 @router.post("/users", response_model=UserRead)
 def create_user(user_in:UserCreate):

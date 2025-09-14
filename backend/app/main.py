@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter
 from fastapi_sqlalchemy import DBSessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from app.routes import auth
+from app.routes import auth, users
 import os
 
 origins = [
@@ -15,6 +15,7 @@ load_dotenv('.env')
 app = FastAPI()
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(users.router)
 
 app.include_router(api_router)
 
