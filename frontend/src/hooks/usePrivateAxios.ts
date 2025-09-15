@@ -1,18 +1,17 @@
 import { privateAxios } from "../api/axios";
-import { useEffect, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { setToken, clearToken } from "../features/authSlice";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./useAuth";
 
 export const usePrivateAxios = () => {
-    const tokenSignal = useSelector((state) => state.auth);
-    const isRefresh = useRef(false);
-    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const { token, updateToken } = useAuth();
 
     useEffect(() => {
         const reqInterceptor = privateAxios.interceptors.request.use(
             (config) => {
-                if (!config.headers["Authorization"]) {
-                    config.headers["Authorization"] = `Bearer ${tokenSignal}`;
+                if (token && !config.headers["Authorization"]) {
+                    config.headers["Authorization"] = `Bearer ${token}`;
                 }
                 return config;
             },
@@ -21,17 +20,10 @@ export const usePrivateAxios = () => {
 
         const resInterceptor = privateAxios.interceptors.response.use(
             (response) => response,
-            async (error) => {
-                const request = error.config;
-                if (error.response?.status === 403 && !isRefresh.current) {
-                    isRefresh.current = true;
-
-                    const newAccessToken = await privateAxios
-                        .get("/auth/refresh")
-                        .then((res) => res.data.accessToken);
-                    request.headers["Authorization"] = `Bearer ${newAccessToken}`;
-                    dispatch(setToken(newAccessToken));
-                    return privateAxios(request);
+            (error) => {
+                if (error.response?.status === 401) {
+                    updateToken("")
+                    navigate("/login", { replace: true });
                 }
                 return Promise.reject(error);
             }
@@ -41,7 +33,7 @@ export const usePrivateAxios = () => {
             privateAxios.interceptors.request.eject(reqInterceptor);
             privateAxios.interceptors.response.eject(resInterceptor);
         };
-    }, [tokenSignal, dispatch]);
+    }, [navigate]);
 
     return privateAxios;
 };
