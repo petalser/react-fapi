@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
-
+#root {
+  background-color: #000;
+  min-height: 100dvh;
+  min-width: 100dvw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -15,12 +22,6 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
-/* body {
-  background-color: #333;
-  min-height: 100dvh;
-  min-width: 100dvw;
-} */
 
 @theme inline {
   --breakpoint-big: 769px;
