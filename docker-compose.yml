@@ -8,6 +8,7 @@ services:
     depends_on:
       - db
     environment:
+      - ACCESS_TOKEN_SEC=${ACCESS_TOKEN_SEC}
       - DATABASE_URL=${DATABASE_URL}
     volumes:
       - ./backend:/code
