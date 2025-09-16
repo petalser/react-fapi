@@ -2,20 +2,20 @@ from typing import List
 from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi_sqlalchemy import DBSessionMiddleware, db
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-import os
 
 from app.routes import auth
 from app.models import User, Message
 from app.schemas import UserRead, MessageRead, MessageBase, UsernameRequest
 from app.utils import get_current_user
+from app.config import Config, get_config
 
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
-load_dotenv('.env')
+config: Config = get_config()
+
 
 app = FastAPI()
 api_router = APIRouter()
@@ -23,7 +23,7 @@ api_router.include_router(auth.router)
 
 app.include_router(api_router)
 
-app.add_middleware(DBSessionMiddleware, db_url=os.environ['DATABASE_URL'])
+app.add_middleware(DBSessionMiddleware, config.DATABASE_URL)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
