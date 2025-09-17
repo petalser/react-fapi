@@ -25,6 +25,10 @@ function AppRoutes() {
         element={token ? <Navigate to="/" replace /> : <Register />}
       />
 
+      <Route path="/me/:username?"
+        element={token ? <Home /> : <Navigate to="/login" replace />}
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
