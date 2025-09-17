@@ -23,6 +23,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+input[disabled], span[disabled] {
+  cursor: not-allowed;
+}
+
 @theme inline {
   --breakpoint-big: 769px;
 }
