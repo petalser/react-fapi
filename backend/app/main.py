@@ -1,7 +1,11 @@
 from typing import List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Form, File, UploadFile
 from fastapi_sqlalchemy import DBSessionMiddleware, db
 from fastapi.middleware.cors import CORSMiddleware
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+import uuid
+import os
 
 from app.routes import auth
 from app.models import User, Message
@@ -15,7 +19,6 @@ origins = [
 ]
 
 config: Config = get_config()
-
 
 app = FastAPI()
 api_router = APIRouter()
@@ -31,6 +34,27 @@ app.add_middleware(
     allow_headers=["*"],
     allow_origins=origins
 )
+
+s3 = boto3.client(
+    "s3",
+    region_name=config.AWS_REGION,
+    aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+)
+
+def upload_file_and_get_key(file: UploadFile) -> str:
+    try:
+        # Generate unique key for the file
+        name, ext = os.path.splitext(file.filename)
+        key = f"{uuid.uuid4()}.{name}{ext}"
+
+        # Upload the file to S3
+        s3.upload_fileobj(file.file, config.BUCKET_NAME, key)
+
+        return key  # only return the key (filename on S3)
+    
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # get my chats
 @app.get("/me", response_model=List[UserRead])
@@ -71,8 +95,9 @@ def get_chat_with_user(
 @app.post("/me/{username}", response_model=MessageRead)
 def send_message_to_user(
     username: str,
-    msg_in: MessageBase,
-    current_user: User = Depends(get_current_user)
+    text: str = Form(...),
+    files: list[UploadFile] | None = File(None),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         sender = db.session.query(User).filter(User.user_name == current_user.user_name).first()
@@ -80,9 +105,14 @@ def send_message_to_user(
         if not sender or not receiver:
             raise ValueError("Sender or receiver not found")
 
+        uploaded_keys = []
+        if files:
+            for f in files:
+                uploaded_keys.append(upload_file_and_get_key(f))
+
         msg = Message(
-            text=msg_in.text,
-            links=msg_in.links,
+            text=text,
+            links=uploaded_keys,  # store only S3 keys (filenames)
             sender_id=sender.id,
             receiver_id=receiver.id
         )
@@ -90,12 +120,26 @@ def send_message_to_user(
         db.session.commit()
         db.session.refresh(msg)
         return msg
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
+    
 # find users
 @app.post("/search", response_model=List[UserRead])
-async def find_user(request: UsernameRequest):
+def find_user(request: UsernameRequest):
     users = db.session.query(User).filter(User.user_name.ilike(f"%{request.username}%")).all()
     
     return users #returns User[] or []
+
+
+@app.get("/download/{file_key}")
+def download_file(file_key: str):
+    try:
+        url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": config.BUCKET_NAME, "Key": file_key},
+            ExpiresIn=3600,  # URL expires in 1 hour
+        )
+        return {"download_url": url}
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=str(e))
