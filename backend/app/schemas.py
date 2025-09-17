@@ -45,4 +45,4 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 class UsernameRequest(BaseModel):
-    user_name: str
+    username: str
