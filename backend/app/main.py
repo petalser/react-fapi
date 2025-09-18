@@ -2,15 +2,12 @@ from typing import List
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Form, File, UploadFile, Response
 from fastapi_sqlalchemy import DBSessionMiddleware, db
 from fastapi.middleware.cors import CORSMiddleware
-import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-import uuid
-import os
 
 from app.routes import auth
 from app.models import User, Message
 from app.schemas import UserRead, MessageRead, UsernameRequest, UpdateMessageRequest, DeleteMessageRequest
-from app.utils import get_current_user
+from app.utils import get_current_user, upload_file_and_get_key, get_file_link
 from app.config import Config, get_config
 
 origins = [
@@ -36,26 +33,6 @@ api_router.include_router(auth.router)
 
 app.include_router(api_router)
 
-s3 = boto3.client(
-    "s3",
-    region_name=config.AWS_REGION,
-    aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
-)
-
-def upload_file_and_get_key(file: UploadFile) -> str:
-    try:
-        # Generate unique key for the file
-        name, ext = os.path.splitext(file.filename)
-        key = f"{uuid.uuid4()}.{name}{ext}"
-
-        # Upload the file to S3
-        s3.upload_fileobj(file.file, config.BUCKET_NAME, key)
-
-        return key  # only return the key (filename on S3)
-    
-    except (BotoCoreError, ClientError) as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 # get my chats
 @app.get("/me", response_model=List[UserRead])
@@ -149,20 +126,13 @@ def patch_message_to_user(
 
     return Response(status_code=204)
 
+
 @app.delete("/me/{username}")
 def delete_message(
     username: str,
     body: DeleteMessageRequest,
     current_user: User = Depends(get_current_user)
 ):
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-    print(">>>>>>>>")
-
     found_receiver = db.session.query(User).filter(User.user_name == username).first()
 
     if not found_receiver:
@@ -180,6 +150,7 @@ def delete_message(
 
     return Response(status_code=204)
 
+
 # find users
 @app.post("/search", response_model=List[UserRead])
 def find_user(request: UsernameRequest):
@@ -187,15 +158,12 @@ def find_user(request: UsernameRequest):
     
     return users #returns User[] or []
 
+
 # create link for file
 @app.get("/download/{file_key}")
 def download_file(file_key: str):
     try:
-        url = s3.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": config.BUCKET_NAME, "Key": file_key},
-            ExpiresIn=3600,  # URL expires in 1 hour
-        )
+        url = get_file_link(file_key)
         return {"download_url": url}
     except (BotoCoreError, ClientError) as e:
         raise HTTPException(status_code=500, detail=str(e))
