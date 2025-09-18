@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Form, File, UploadFile
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Form, File, UploadFile, Response
 from fastapi_sqlalchemy import DBSessionMiddleware, db
 from fastapi.middleware.cors import CORSMiddleware
 import boto3
@@ -9,7 +9,7 @@ import os
 
 from app.routes import auth
 from app.models import User, Message
-from app.schemas import UserRead, MessageRead, MessageBase, UsernameRequest
+from app.schemas import UserRead, MessageRead, UsernameRequest, UpdateMessageRequest, DeleteMessageRequest
 from app.utils import get_current_user
 from app.config import Config, get_config
 
@@ -21,12 +21,8 @@ origins = [
 config: Config = get_config()
 
 app = FastAPI()
-api_router = APIRouter()
-api_router.include_router(auth.router)
 
-app.include_router(api_router)
-
-app.add_middleware(DBSessionMiddleware, config.DATABASE_URL)
+app.add_middleware(DBSessionMiddleware, db_url=config.DATABASE_URL)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -34,6 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
     allow_origins=origins
 )
+
+api_router = APIRouter()
+api_router.include_router(auth.router)
+
+app.include_router(api_router)
 
 s3 = boto3.client(
     "s3",
@@ -124,6 +125,61 @@ def send_message_to_user(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
+# edit message
+@app.patch("/me/{username}")
+def patch_message_to_user(
+    username: str,
+    body: UpdateMessageRequest,
+    current_user: User = Depends(get_current_user)
+):
+    found_receiver = db.session.query(User).filter(User.user_name == username).first()
+
+    if not found_receiver:
+        raise HTTPException(status_code=404, detail="No such user")
+
+    found_message = db.session.query(Message).filter(Message.id == body.id).first()
+
+    if not found_message:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not found_message.sender_id == current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    found_message.text = body.text
+    db.session.commit()
+
+    return Response(status_code=204)
+
+@app.delete("/me/{username}")
+def delete_message(
+    username: str,
+    body: DeleteMessageRequest,
+    current_user: User = Depends(get_current_user)
+):
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+    print(">>>>>>>>")
+
+    found_receiver = db.session.query(User).filter(User.user_name == username).first()
+
+    if not found_receiver:
+        raise HTTPException(status_code=404, detail="No such user")
+
+    msg = db.session.query(Message).filter(Message.id == body.id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    if msg.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    db.session.delete(msg)
+    db.session.commit()
+
+    return Response(status_code=204)
+
 # find users
 @app.post("/search", response_model=List[UserRead])
 def find_user(request: UsernameRequest):
@@ -131,7 +187,7 @@ def find_user(request: UsernameRequest):
     
     return users #returns User[] or []
 
-
+# create link for file
 @app.get("/download/{file_key}")
 def download_file(file_key: str):
     try:

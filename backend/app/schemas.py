@@ -46,3 +46,10 @@ class TokenResponse(BaseModel):
 
 class UsernameRequest(BaseModel):
     username: str
+
+class UpdateMessageRequest(BaseModel):
+    id: int
+    text: str
+
+class DeleteMessageRequest(BaseModel):
+    id: int 
