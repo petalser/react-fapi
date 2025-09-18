@@ -23,7 +23,7 @@ export default function Register() {
 
     async function onSubmit(data: FormValues) {
         try {
-            const response = await axios.post("/users/", {
+            const response = await axios.post("/register", {
                 user_name: data.username,
                 email: data.email,
                 password: data.password

@@ -1,6 +1,6 @@
 import ChatWindow from "./ChatWindow";
 import { useParams } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import { usePrivateAxios } from "../hooks/usePrivateAxios";
 import { useForm } from "react-hook-form";
 
@@ -47,29 +47,6 @@ export default function Chat({ className }: ChatProps) {
         setSelectedFiles(files);
         setValue("files", files);
     };
-
-    const fetchCallback = useCallback(async () => {
-        try {
-            const response = await privateAxios.get(`/me/${username}`);
-            if (response.status === 200) {
-                setMessages(response.data)
-            }
-        } catch (err: unknown) {
-            console.error(err)
-        }
-    }, [privateAxios, username])
-
-    useEffect(() => {
-        if (!username) return
-
-        fetchCallback()
-
-        const interval = setInterval(() => {
-            fetchCallback()
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [username, fetchCallback]);
 
     async function onSubmit(data: SendMessageFormValues) {
         const formData = new FormData();
@@ -124,7 +101,7 @@ export default function Chat({ className }: ChatProps) {
                         : <p className="m-auto">please, choose user</p>
                 }
             </div> */}
-            <ChatWindow messages={messages} username={username} />
+            <ChatWindow username={username || ""} />
             <form
                 onSubmit={handleSubmit(onSubmit)}
                 className="w-full flex flex-col big:flex-row gap-4"
